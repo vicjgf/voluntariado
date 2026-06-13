@@ -36,7 +36,19 @@ function base64url(input) {
 }
 
 function pemToArrayBuffer(pem) {
-  const b64 = pem
+  // Normaliza la llave sin importar el formato en que venga:
+  // - con \n literales (texto)
+  // - con saltos de línea reales
+  // - con comillas envolventes accidentales
+  let clean = pem.trim();
+  // Quitar comillas envolventes si las hay
+  if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1);
+  }
+  // Convertir \n literales en saltos reales
+  clean = clean.replace(/\\n/g, '\n');
+  // Extraer solo el contenido base64 entre los encabezados
+  const b64 = clean
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
     .replace(/\s/g, '');
@@ -63,7 +75,7 @@ async function getAccessToken(env) {
   const encClaim = base64url(JSON.stringify(claim));
   const toSign = `${encHeader}.${encClaim}`;
 
-  const keyData = pemToArrayBuffer(env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'));
+  const keyData = pemToArrayBuffer(env.FIREBASE_PRIVATE_KEY);
   const key = await crypto.subtle.importKey(
     'pkcs8', keyData,
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
@@ -281,6 +293,17 @@ export default {
     // Servir el frontend (archivos estáticos) — manejado por Cloudflare assets
     if (!path.startsWith('/api/')) {
       return env.ASSETS.fetch(request);
+    }
+
+    // Endpoint diagnóstico: confirma si las variables están presentes (sin exponerlas)
+    if (path === '/api/diag' && method === 'GET') {
+      return json({
+        FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID ? 'presente' : 'FALTA',
+        FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL ? 'presente' : 'FALTA',
+        FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY ? ('presente, longitud ' + env.FIREBASE_PRIVATE_KEY.length) : 'FALTA',
+        ADMIN_EMAIL: env.ADMIN_EMAIL ? 'presente' : 'FALTA',
+        key_empieza: env.FIREBASE_PRIVATE_KEY ? env.FIREBASE_PRIVATE_KEY.slice(0, 30) : '',
+      });
     }
 
     try {
