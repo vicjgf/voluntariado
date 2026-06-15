@@ -295,17 +295,6 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    // Endpoint diagnóstico: confirma si las variables están presentes (sin exponerlas)
-    if (path === '/api/diag' && method === 'GET') {
-      return json({
-        FIREBASE_PROJECT_ID: env.FIREBASE_PROJECT_ID ? 'presente' : 'FALTA',
-        FIREBASE_CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL ? 'presente' : 'FALTA',
-        FIREBASE_PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY ? ('presente, longitud ' + env.FIREBASE_PRIVATE_KEY.length) : 'FALTA',
-        ADMIN_EMAIL: env.ADMIN_EMAIL ? 'presente' : 'FALTA',
-        key_empieza: env.FIREBASE_PRIVATE_KEY ? env.FIREBASE_PRIVATE_KEY.slice(0, 30) : '',
-      });
-    }
-
     try {
       const token = await getAccessToken(env);
 
